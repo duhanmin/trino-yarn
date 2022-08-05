@@ -42,6 +42,9 @@ public class JobInfo {
     private int numTotalContainers;
     private int amMemory;
     private boolean start;
+    private boolean local;
+    private String appName;
+    private String appId;
 
     public String getPluginPath() {
         return path + "/plugin";

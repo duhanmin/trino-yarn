@@ -476,7 +476,7 @@ public class Client {
             YarnHelper.addToLocalResources(appName, fs, null, Constants.JAVA_OPTS_PATH, appId.toString(), localResources, ArrayUtil.join(javaOpts, " "));
         }
 
-
+        jobInfo.setLocal(false);
         String catalogHdfs = jobInfo.getCatalogHdfs();
         if (!jobInfo.isHdfsOrS3()) {
             if (FileUtil.isDirectory(catalogHdfs)) {
@@ -485,6 +485,7 @@ public class Client {
                 if (!StrUtil.startWith(catalogHdfs, HDFS)) {
                     catalogHdfs = HDFS + catalogHdfs;
                 }
+                jobInfo.setLocal(true);
                 jobInfo.setCatalog(catalogHdfs);
             }
         }
@@ -548,6 +549,9 @@ public class Client {
         vargs.add("--num_containers " + numContainers);
         vargs.add("--priority " + shellCmdPriority);
         vargs.add("--master_memory " + this.amMemory);
+
+        jobInfo.setAppName(appName);
+        jobInfo.setAppId(appId.toString());
         vargs.add("--job_info " + Base64.encode(jobInfo.toString()));
 
         for (Map.Entry<String, String> entry : shellEnv.entrySet()) {

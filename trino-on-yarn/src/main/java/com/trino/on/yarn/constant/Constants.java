@@ -154,7 +154,7 @@ public class Constants {
             "query.stage-count-warning-threshold=100\n" +
             "query.max-stage-count=150\n" +
             "http-server.http.port={}\n" +
-            "http-server.log.path={}/http-request.log\n" +
+            "http-server.log.path=./http-request.log\n" +
             "http-server.log.max-size=67108864B\n" +
             "http-server.log.max-history=5\n" +
             "log.max-size=268435456B\n" +

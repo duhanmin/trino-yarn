@@ -134,13 +134,13 @@ public abstract class TrinoExecutor {
         String catalog = jobInfo.getCatalog();
         //压缩包可能存在多一层嵌套问题
         if (jobInfo.isHdfsOrS3()) {
-            catalog = path + "/" + JAVA_TRINO_CATALOG_PATH + "/" + JAVA_TRINO_CATALOG_PATH;
-            if (!FileUtil.exist(catalog)) {
+            if (jobInfo.isLocal()) {
                 catalog = path + "/" + JAVA_TRINO_CATALOG_PATH;
+            } else {
+                catalog = path + "/" + JAVA_TRINO_CATALOG_PATH + "/" + JAVA_TRINO_CATALOG_PATH;
             }
-            if (!FileUtil.exist(catalog)) {
-                throw new RuntimeException("catalog not found");
-            }
+        } else {
+            throw new RuntimeException("catalog not found");
         }
 /*        if (RunType.YARN_PER.getName().equalsIgnoreCase(jobInfo.getRunType())) {
             catalog = catalogFilter(catalog);

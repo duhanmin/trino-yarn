@@ -14,6 +14,7 @@
 package com.trino.on.yarn;
 
 import cn.hutool.core.codec.Base64;
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.net.NetUtil;
 import cn.hutool.core.thread.GlobalThreadPool;
 import cn.hutool.core.thread.ThreadUtil;
@@ -74,8 +75,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.trino.on.yarn.constant.Constants.HDFS;
-import static com.trino.on.yarn.constant.Constants.S_3_A;
+import static com.trino.on.yarn.constant.Constants.*;
 
 @Data
 @InterfaceAudience.Public
@@ -909,6 +909,24 @@ public class ApplicationMaster {
                 } catch (IOException | URISyntaxException e) {
                     throw new RuntimeException(e);
                 }
+            }
+
+            String log = StrUtil.format(TRINO_LOG_CONTENT, "WARN");
+            File logFile = FileUtil.writeUtf8String(log, conf + TRINO_LOG);
+            amMemory = jobInfo.getAmMemory();
+            int nodeMemory = amMemory / 3 * 2;
+            String config = StrUtil.format(TRINO_CONFIG_CONTENT, false, jobInfo.getIpMaster(), jobInfo.getPortTrino(),
+                    amMemory, nodeMemory, nodeMemory, NetUtil.getUsableLocalPort());
+            File configEnv = FileUtil.writeUtf8String(config, conf + TRINO_CONFIG);
+
+            try {
+                org.apache.hadoop.fs.FileSystem fs = org.apache.hadoop.fs.FileSystem.get(conf);
+                YarnHelper.addToLocalResources(jobInfo.getAppName(), fs, logFile.getAbsolutePath(),
+                        TRINO_LOG, jobInfo.getAppId(), localResources, null);
+                YarnHelper.addToLocalResources(jobInfo.getAppName(), fs, configEnv.getAbsolutePath(),
+                        TRINO_CONFIG, jobInfo.getAppId(), localResources, null);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
 
             // Set the necessary command to execute on the allocated container
