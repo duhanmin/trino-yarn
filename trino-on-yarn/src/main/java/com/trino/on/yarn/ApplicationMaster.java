@@ -16,6 +16,7 @@ package com.trino.on.yarn;
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.net.NetUtil;
+import cn.hutool.core.text.StrPool;
 import cn.hutool.core.thread.GlobalThreadPool;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.RuntimeUtil;
@@ -28,6 +29,7 @@ import com.trino.on.yarn.constant.Constants;
 import com.trino.on.yarn.constant.RunType;
 import com.trino.on.yarn.entity.JobInfo;
 import com.trino.on.yarn.executor.TrinoExecutorMaster;
+import com.trino.on.yarn.executor.TrinoExecutorNodeV2;
 import com.trino.on.yarn.server.MasterServer;
 import com.trino.on.yarn.server.Server;
 import com.trino.on.yarn.util.Log4jPropertyHelper;
@@ -868,6 +870,14 @@ public class ApplicationMaster {
             String frameworkPath = currentEnvs.get(Constants.JAR_FILE_PATH);
 
             shellEnv.put("CLASSPATH", YarnHelper.buildClassPathEnv(conf));
+            shellEnv.put("LANG", "zh_CN.UTF-8");
+            shellEnv.put("PROCNAME", "trino-server");
+            //写入环境变量
+            String envs = StrUtil.format(TRINO_ENV_CONTENT, jobInfo.getJdk11Home(), jobInfo.getIpMaster(), jobInfo.getPortTrino());
+            for (String env : StrUtil.split(envs, StrPool.LF)) {
+                String[] kv = env.split("=");
+                shellEnv.put(kv[0], kv[1]);
+            }
 
             try {
                 YarnHelper.addFrameworkToDistributedCache(frameworkPath, localResources, conf);
@@ -912,12 +922,12 @@ public class ApplicationMaster {
             }
 
             String log = StrUtil.format(TRINO_LOG_CONTENT, "WARN");
-            File logFile = FileUtil.writeUtf8String(log, conf + TRINO_LOG);
+            File logFile = FileUtil.writeUtf8String(log, "./" + jobInfo.getAppId() + "/" + TRINO_LOG);
             amMemory = jobInfo.getAmMemory();
             int nodeMemory = amMemory / 3 * 2;
             String config = StrUtil.format(TRINO_CONFIG_CONTENT, false, jobInfo.getIpMaster(), jobInfo.getPortTrino(),
                     amMemory, nodeMemory, nodeMemory, NetUtil.getUsableLocalPort());
-            File configEnv = FileUtil.writeUtf8String(config, conf + TRINO_CONFIG);
+            File configEnv = FileUtil.writeUtf8String(config, "./" + jobInfo.getAppId() + "/" + TRINO_CONFIG);
 
             try {
                 org.apache.hadoop.fs.FileSystem fs = org.apache.hadoop.fs.FileSystem.get(conf);
@@ -932,21 +942,22 @@ public class ApplicationMaster {
             // Set the necessary command to execute on the allocated container
             Vector<CharSequence> vargs = new Vector<>(10);
 
+            TrinoExecutorNodeV2 trinoExecutorNodeV2 = new TrinoExecutorNodeV2(jobInfo);
             // Set java executable command
-            vargs.add(ApplicationConstants.Environment.JAVA_HOME.$$() + "/bin/java");
+            vargs.add(trinoExecutorNodeV2.toCmd());
             // Set am memory size
-            vargs.add("-Xms" + containerMemory + "m");
-            vargs.add("-Xmx" + containerMemory + "m");
             vargs.add(javaOpts);
 
             // Set tmp dir
             vargs.add("-Djava.io.tmpdir=$PWD/tmp");
+            vargs.add("-Duser.language=zh");
+            vargs.add("-Dfile.encoding=utf-8");
 
             // Set log4j configuration file
             // vargs.add("-Dlog4j.configuration=" + Constants.NESTO_YARN_APPCONTAINER_LOG4J);
 
             // Set class name
-            vargs.add(appNodeMainClass);
+            vargs.add("io.trino.server.TrinoServer");
 
             // Set args for the shell command if any
             vargs.add(shellArgs);

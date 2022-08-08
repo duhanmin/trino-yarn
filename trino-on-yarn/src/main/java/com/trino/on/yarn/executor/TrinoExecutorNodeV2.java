@@ -15,7 +15,7 @@ public class TrinoExecutorNodeV2 {
     protected static final List<String> trinoEnv = CollUtil.newArrayList();
     protected JobInfo jobInfo;
 
-    public TrinoExecutorNodeV2(JobInfo jobInfo, String logFile, String configEnv) {
+    public TrinoExecutorNodeV2(JobInfo jobInfo) {
         this.jobInfo = jobInfo;
     }
 
@@ -55,7 +55,6 @@ public class TrinoExecutorNodeV2 {
         for (String node : StrUtil.split(nodes, StrPool.LF)) {
             putEnv(node);
         }
-        put("io.trino.server.TrinoServer");
 
         return StrUtil.join(" ", trinoEnv);
     }
